@@ -4,6 +4,8 @@ use hyper::server::conn::http1;
 
 mod shared_states;
 mod router;
+mod gate_keeper;
+mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tokio::task::spawn(async move {
             if let Err(err) = http1::Builder::new()
                 .serve_connection(io, hyper::service::service_fn(move |req| {
-                    router::router(req, states_clone.clone())
+                    gate_keeper::gate_keeper(req, states_clone.clone())
                 }))
                 .await
             {
