@@ -22,7 +22,10 @@ fn extract_id(path: &str, prefix: &str) -> Option<i32> {
     remainder.parse::<i32>().ok()
 }
 // recognize paths are /dishes, /recipes/{dish_id:str}, /recipe/{recipe_id:str}
-pub async fn gate_keeper(req: Request<Incoming>, state: Arc<AppState>) -> Result<Response<Full<Bytes>>, Infallible> {
+pub async fn gate_keeper(
+    req: Request<Incoming>,
+    state: Arc<AppState>
+) -> Result<Response<Full<Bytes>>, Infallible> {
     // 1. Pre-processing (Security/Logging)
     if req.method() != Method::GET {
         return Ok(utils::build_response(405, "Method Not Allowed"));
