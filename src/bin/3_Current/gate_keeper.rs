@@ -12,8 +12,10 @@ use crate::utils;
 
 pub enum Route {
     Dishes, //retrieve dish list
+    Ingredients, //retrieve ingredient list
     Recipes(i32), //there are dishes and recipes, dish contains multiple recipes, you must list recipes in a dish section
     Recipe(i32), //retrieve a single recipe by its ID
+    Ingredient(i32), // retrieve single ingredient with details
 }
 
 fn extract_id(path: &str, prefix: &str) -> Option<i32> {
@@ -21,7 +23,8 @@ fn extract_id(path: &str, prefix: &str) -> Option<i32> {
     if remainder.contains('/') { return None; }
     remainder.parse::<i32>().ok()
 }
-// recognize paths are /dishes, /recipes/{dish_id:str}, /recipe/{recipe_id:str}
+// recognize paths are /recipes/dishes, /recipes/recipes/{dish_id:int}, /recipes/recipe/{recipe_id:int},
+// /match_checker/ingrdients, /match_checker/ingredient/{ingredient_id:int}
 pub async fn gate_keeper(
     req: Request<Incoming>,
     state: Arc<AppState>
@@ -33,17 +36,24 @@ pub async fn gate_keeper(
     let path: &str = req.uri().path();
 
     let route = match path {
-        "/dishes" => Route::Dishes,
-        p if p.starts_with("/recipes/") => {
-            match extract_id(p, "/recipes/") {
+        "/recipes/dishes" => Route::Dishes,
+        "/match_checker/ingredients" => Route::Ingredients,
+        p if p.starts_with("/recipes/recipes/") => {
+            match extract_id(p, "/recipes/recipes/") {
                 Some(id) => Route::Recipes(id),
                 None => return Ok(utils::build_response(400, "Invalid Dish ID")),
             }
         }
-        p if p.starts_with("/recipe/") => {
-            match extract_id(p, "/recipe/") {
+        p if p.starts_with("/recipes/recipe/") => {
+            match extract_id(p, "/recipes/recipe/") {
                 Some(id) => Route::Recipe(id),
                 None => return Ok(utils::build_response(400, "Invalid Recipe ID")),
+            }
+        }
+        p if p.starts_with("/match_checker/ingredient") => {
+            match extract_id(p, "/match_checker/ingredient") {
+                Some(id) => Route::Ingredient(id),
+                None => return Ok(utils::build_response(400, "Invalid Ingredient ID"))
             }
         }
         _ => return Ok(utils::build_response(404, "Not Found")),

@@ -8,15 +8,15 @@ pub struct Dish {
 }
 
 #[derive(Debug, Serialize, FromRow)]
-pub struct Recipe {
+pub struct SearchRecipe {
     pub id: i32,
-    pub dish_id: i32,
     pub name: Option<String>,
 }
 
 #[derive(Debug, Serialize, FromRow)]
-pub struct SearchRecipe {
+pub struct Recipe {
     pub id: i32,
+    pub dish_id: i32,
     pub name: Option<String>,
 }
 
