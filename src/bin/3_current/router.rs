@@ -15,7 +15,7 @@ pub async fn router(route: gate_keeper::Route, states: Arc<shared_states::AppSta
         ),
         gate_keeper::Route::Ingredients => Ok(
             Response::new(Full::new(Bytes::from(get_ingredients(states).await)))
-        )
+        ),
         gate_keeper::Route::Recipes(id) => Ok(
             Response::new(Full::new(Bytes::from(get_recipes_for_dish(id,states).await)))
         ),
@@ -23,7 +23,7 @@ pub async fn router(route: gate_keeper::Route, states: Arc<shared_states::AppSta
             Response::new(Full::new(Bytes::from(get_recipe_by_id(id,states).await)))
         ),
         gate_keeper::Route::Ingredient(id) => Ok(
-            Response::new(Full:new(Bytes::from(get_ingredient(id,states).await)))
+            Response::new(Full::new(Bytes::from(get_ingredient(id,states).await)))
         )
 
     }

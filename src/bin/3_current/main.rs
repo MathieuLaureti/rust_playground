@@ -45,10 +45,10 @@ mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let listener = TcpListener::bind("127.0.0.1:9999").await?;
+    let listener = TcpListener::bind("0.0.0.0:9999").await?;
     let states = shared_states::initialize_shared_state().await;
 
-    println!("TCP Server running on 127.0.0.1:9999");
+    eprintln!("TCP Server running on 0.0.0.0:9999");
 
     loop {
         let (stream, _addr) = listener.accept().await?;
