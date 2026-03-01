@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, title, avoid, affinities, matches FROM match_checker WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "avoid",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 3,
+        "name": "affinities",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "matches",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8ca1d063536460c5f399c0a91f454551333768b14e6987f76d0e42ddd037e330"
+}
