@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT json_build_object(\n            'id', d.id,\n            'name', d.name,\n            'components', (\n                SELECT json_agg(json_build_object(\n                    'id', rc.id,\n                    'name', rc.name,\n                    'ingredients', (SELECT json_agg(i) FROM ingredient i WHERE i.component_id = rc.id),\n                    'instructions', (SELECT json_agg(ins ORDER BY ins.step) FROM instruction ins WHERE ins.component_id = rc.id)\n                ))\n                FROM recipe r\n                JOIN recipe_component rc ON rc.recipe_id = r.id\n                WHERE r.dish_id = d.id\n            )\n        ) as \"recipe!\"\n        FROM dish d\n        WHERE d.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "recipe!",
+        "type_info": "Json"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "00814be0d79a1a1e1be66ffc59236486ac6e534a8406e0f57f3eb0093bc5bd69"
+}
