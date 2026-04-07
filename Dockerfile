@@ -1,6 +1,6 @@
 # 1 : Build stage
 FROM rust:1.93-slim-bookworm as builder
-ARG BIN_NAME=3_current
+ARG BIN_NAME=3_first_version
 WORKDIR /app
 
 COPY Cargo.toml Cargo.lock ./
@@ -16,7 +16,7 @@ RUN cargo build --release --bin ${BIN_NAME}
 ENV SQLX_OFFLINE=true
 # 2 : Runtime stage
 FROM debian:bookworm-slim
-ARG BIN_NAME=3_current
+ARG BIN_NAME=3_first_version
 RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
