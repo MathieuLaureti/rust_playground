@@ -1,8 +1,10 @@
 use std::sync::Arc;
-
+use tokio::sync::Semaphore;
 use tokio::net::{TcpListener};
-use hyper_util::rt::TokioIo;
+use hyper_util::rt::{TokioIo,TokioTimer};
 use hyper::server::conn::http1;
+use std::net::SocketAddr;
+use socket2::{Domain, Protocol, Socket, Type};
 
 // The goal of this Project is to implement a simple but highly optimized custom HTTP server 
 // it uses Low Level libraries and techniques to achieve high performance, such as:
@@ -43,27 +45,62 @@ mod utils;
 // this module currently handles :
 // - Building HTTP responses with a given status and body text
 
+fn create_reusable_listener(addr: SocketAddr) -> TcpListener {
+    let domain = if addr.is_ipv6() { Domain::IPV6 } else { Domain::IPV4 };
+    let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP)).unwrap();
+
+    socket.set_reuse_port(true).unwrap();
+    socket.set_reuse_address(true).unwrap();
+    socket.bind(&addr.into()).unwrap();
+    socket.listen(8192).unwrap();
+
+    let std_listener: std::net::TcpListener = socket.into();
+    std_listener.set_nonblocking(true).unwrap();
+    TcpListener::from_std(std_listener).unwrap()
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let listener = TcpListener::bind("0.0.0.0:6669").await?;
+    let addr: SocketAddr = "[::]:6669".parse()?;
     let states = shared_states::initialize_shared_state().await;
+    let cores = num_cpus::get();
+    
+    let semaphore = Arc::new(Semaphore::new(20_000));
+    let acceptor_count = cores.min(8);
 
-    eprintln!("TCP Server running on 0.0.0.0:6669");
+    eprintln!("Server launched. Listening on port {}", addr.port());
 
-    loop {
-        let (stream, _addr) = listener.accept().await?;
-        let io = TokioIo::new(stream);
-        let states_clone = Arc::clone(&states);
-              // Multi-threaded execution
-        tokio::task::spawn(async move {
-            if let Err(err) = http1::Builder::new()
-                .serve_connection(io, hyper::service::service_fn(move |req| {
-                    gate_keeper::gate_keeper(req, states_clone.clone())
-                }))
-                .await
-            {
-                eprintln!("Error serving connection: {:?}", err);
+    for _ in 0..acceptor_count {
+        let s_clone = Arc::clone(&states);
+        let sem_clone = Arc::clone(&semaphore);
+        let listener = create_reusable_listener(addr);
+
+        tokio::spawn(async move {
+            loop {
+                let Ok((stream, _)) = listener.accept().await else { continue };
+
+                let Ok(permit) = sem_clone.clone().acquire_owned().await else { continue };
+
+                let s = Arc::clone(&s_clone);
+                
+                tokio::spawn(async move {
+                    let _ = stream.set_nodelay(true);
+                    let io = TokioIo::new(stream);
+                    
+                    let _ = http1::Builder::new()
+                        .keep_alive(true)
+                        .timer(TokioTimer::new())
+                        .serve_connection(io, hyper::service::service_fn(move |req| {
+                            gate_keeper::gate_keeper(req, Arc::clone(&s))
+                        }))
+                        .await;
+                    
+                    drop(permit);
+                });
             }
         });
     }
+
+    std::future::pending::<()>().await;
+    Ok(())
 }

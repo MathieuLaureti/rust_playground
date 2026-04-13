@@ -9,13 +9,3 @@ pub fn build_response(status: u16, body_text: &'static str) -> Response<Full<Byt
         .body(Full::new(Bytes::from(body_text)))
         .unwrap() // Safe here if you know status and body are valid
 }
-
-pub async fn serialize_to_bytes<T: serde::Serialize + Send + 'static>(data: T, default: &'static [u8]) -> Bytes {
-    tokio::task::spawn_blocking(move || {
-        serde_json::to_vec(&data)
-            .map(Bytes::from)
-            .unwrap_or_else(|_| Bytes::copy_from_slice(default))
-    })
-    .await
-    .unwrap_or_else(|_| Bytes::copy_from_slice(default))
-}

@@ -11,7 +11,6 @@ use crate::router::router;
 use crate::utils;
 
 pub enum Route {
-    Health, // health check
     Dishes, //retrieve dish list
     Ingredients, //retrieve ingredient list
     Recipes(i32), //there are dishes and recipes, dish contains multiple recipes, you must list recipes in a dish section
@@ -37,7 +36,6 @@ pub async fn gate_keeper(
     let path: &str = req.uri().path();
 
     let route = match path {
-        "/health" => Route::Health,
         "/recipes/dishes" => Route::Dishes,
         "/match_checker/ingredients" => Route::Ingredients,
         p if p.starts_with("/recipes/recipes/") => {

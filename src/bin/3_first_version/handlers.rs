@@ -1,40 +1,42 @@
 use crate::shared_states::AppState;
 use std::sync::Arc;
 use crate::db_models::{Dish,SearchRecipe,FullRecipe,MatchList,MatchChecker};
-use crate::utils::serialize_to_bytes;
-use hyper::body::Bytes;
 
-pub async fn get_dish_list(states: Arc<AppState>) -> Bytes {
+// /recipes/dishes
+pub async fn get_dish_list(states: Arc<AppState>) -> String {
     let result = sqlx::query_as::<_, Dish>("SELECT id, name FROM dish")
         .fetch_all(&states.pool)
         .await;
 
     match result {
-        Ok(dishes) => serialize_to_bytes(dishes, b"[]").await,
+        Ok(dishes) => {
+            serde_json::to_string(&dishes).unwrap_or_else(|_| "[]".to_string())
+        }
         Err(e) => {
             eprintln!("Database error: {}", e); 
-            Bytes::from_static(b"[]")
+            "[]".to_string() 
         }
     }
 }
-
-pub async fn get_recipes_for_dish(dish_id: i32, states: Arc<AppState>) -> Bytes {
+// /recipes/recipes/{dish_id}
+pub async fn get_recipes_for_dish(dish_id: i32, states: Arc<AppState>) -> String {
     let result = sqlx::query_as!(
         SearchRecipe,
         "SELECT id, name FROM recipe WHERE dish_id = $1",
         dish_id
     ).fetch_all(&states.pool).await;
-
     match result {
-        Ok(recipes) => serialize_to_bytes(recipes, b"[]").await,
+        Ok(recipes) => {
+            serde_json::to_string(&recipes).unwrap_or_else(|_| "[]".to_string())
+        }
         Err(e) => {
             eprintln!("Database error: {}", e); 
-            Bytes::from_static(b"[]")
+            "[]".to_string() 
         }
     }
 }
-
-pub async fn get_recipe_by_id(recipe_id: i32, states: Arc<AppState>) -> Bytes {
+// /recipes/recipe/{recipe_id}
+pub async fn get_recipe_by_id(recipe_id: i32, states: Arc<AppState>) -> String {
     let result = sqlx::query_scalar!(
         r#"
         SELECT json_build_object(
@@ -44,8 +46,16 @@ pub async fn get_recipe_by_id(recipe_id: i32, states: Arc<AppState>) -> Bytes {
                 SELECT json_agg(json_build_object(
                     'id', rc.id,
                     'name', rc.name,
-                    'ingredients', (SELECT json_agg(i) FROM ingredient i WHERE i.component_id = rc.id),
-                    'instructions', (SELECT json_agg(ins ORDER BY ins.step) FROM instruction ins WHERE ins.component_id = rc.id)
+                    'ingredients', (
+                        SELECT json_agg(i) 
+                        FROM ingredient i 
+                        WHERE i.component_id = rc.id
+                    ),
+                    'instructions', (
+                        SELECT json_agg(ins ORDER BY ins.step) 
+                        FROM instruction ins 
+                        WHERE ins.component_id = rc.id
+                    )
                 ))
                 FROM recipe r
                 JOIN recipe_component rc ON rc.recipe_id = r.id
@@ -62,46 +72,44 @@ pub async fn get_recipe_by_id(recipe_id: i32, states: Arc<AppState>) -> Bytes {
 
     match result {
         Ok(recipe_json) => {
-            tokio::task::spawn_blocking(move || {
-
-                let mut buffer = Vec::with_capacity(4096); 
-
-                if serde_json::to_writer(&mut buffer, &recipe_json).is_ok() {
-                    Bytes::from(buffer)
-                } else {
-                    Bytes::from_static(b"{}")
-                }
-            })
-            .await
-            .unwrap_or_else(|_| Bytes::from_static(b"{}"))
+            serde_json::to_string(&recipe_json).unwrap_or_else(|_| "{}".to_string())
         }
         Err(e) => {
             eprintln!("Database error: {}", e);
-            Bytes::from_static(b"{}")
+            "{}".to_string()
         }
     }
 }
-
-pub async fn get_ingredients(states: Arc<AppState>) -> Bytes {
-    let result = sqlx::query_as::<_, Dish>("SELECT id, name FROM match_checker") // Fixed typo in 'titel'
+// /match_checker/ingredients
+pub async fn get_ingredients(states: Arc<AppState>) -> String {
+    let result = sqlx::query_as::<_, Dish>("SELECT id, titel FROM match_checker")
         .fetch_all(&states.pool)
         .await;
     
     match result {
-        Ok(data) => serialize_to_bytes(data, b"[]").await,
-        Err(_) => Bytes::from_static(b"[]")
+        Ok(match_checker_json) => {
+            serde_json::to_string(&match_checker_json).unwrap_or_else(|_| "{}".to_string())
+        }
+        Err(e) => {
+            eprintln!("Database error: {}", e);
+            "{}".to_string()
+        }
     }
 }
-
-pub async fn get_ingredient(ingredient_id: i32, states: Arc<AppState>) -> Bytes {
+// /match_checker/ingredient/{ingredient_id}
+pub async fn get_ingredient(ingredient_id: i32, states: Arc<AppState>) -> String {
     let result = sqlx::query_as!(
         MatchChecker,
         "SELECT id, title, avoid, affinities, matches FROM match_checker WHERE id = $1",
         ingredient_id
     ).fetch_all(&states.pool).await;
-
     match result {
-        Ok(data) => serialize_to_bytes(data, b"[]").await,
-        Err(_) => Bytes::from_static(b"[]")
+        Ok(recipes) => {
+            serde_json::to_string(&recipes).unwrap_or_else(|_| "[]".to_string())
+        }
+        Err(e) => {
+            eprintln!("Database error: {}", e); 
+            "[]".to_string() 
+        }
     }
 }
